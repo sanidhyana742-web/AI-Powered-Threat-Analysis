@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}Attack Path Graph - NCIRIP Platform{% endblock %}
+
+{% block extra_head %}
+<!-- Vis.js Network Library -->
+<script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<style>
+    #network-container {
+        width: 100%;
+        max-width: 1000px;
+        height: 600px;
+        background: #ffffff;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 12px;
+        position: relative;
+    }
+    .graph-legend-badge {
+        font-size: 11px;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="gradient-text fw-bold m-0">Dynamic Threat Knowledge Graph</h2>
+            <p class="text-muted small m-0 mt-1">Multi-vector topological analysis linking threat actors, vulnerabilities, and MITRE frameworks</p>
+        </div>
+        <div class="d-flex gap-2">
+            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-2 rounded-pill" style="color: #0284c7 !important;">
+                <i class="fa-solid fa-project-diagram me-1"></i> Topological Engine v2.4
+            </span>
+        </div>
+    </div>
+
+    <div class="glass-card p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-3 border-bottom border-secondary border-opacity-10">
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-muted small fw-bold text-uppercase">Node Legend:</span>
+                <span class="graph-legend-badge bg-info bg-opacity-10 text-info border border-info border-opacity-25">
+                    <i class="fa-solid fa-circle" style="font-size: 8px;"></i> Target Sector
+                </span>
+                <span class="graph-legend-badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">
+                    <i class="fa-solid fa-square" style="font-size: 8px;"></i> Critical CVE
+                </span>
+                <span class="graph-legend-badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">
+                    <i class="fa-solid fa-square" style="font-size: 8px;"></i> MITRE Technique
+                </span>
+            </div>
+            <div>
+                <button class="btn btn-sm btn-outline-dark border-secondary px-3 rounded-pill" onclick="resetGraphView()">
+                    <i class="fa-solid fa-expand me-1"></i> Reset View
+                </button>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-center">
+            <div id="network-container"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let networkInstance = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('network-container');
+    if (!container) return;
+
+    const nodes = new vis.DataSet([
+        { 
+            id: 1, 
+            label: 'Transportation Sector\n(Critical Infrastructure)', 
+            shape: 'box', 
+            margin: 12,
+            color: { background: '#e0f2fe', border: '#0284c7', highlight: { background: '#0284c7', border: '#fff' } }, 
+            font: { color: '#0f172a', face: 'Inter', size: 13, multi: true, bold: true },
+            borderWidth: 2,
+            borderRadius: 8
+        },
+        { 
+            id: 2, 
+            label: 'CVE-2024-1758\n(CVSS Score: 9.9)', 
+            shape: 'box', 
+            margin: 12,
+            color: { background: '#fee2e2', border: '#ef4444', highlight: { background: '#ef4444', border: '#fff' } }, 
+            font: { color: '#0f172a', face: 'Inter', size: 13, multi: true, bold: true },
+            borderWidth: 2,
+            borderRadius: 8
+        },
+        { 
+            id: 3, 
+            label: 'T1059: Command Interpreter\n(Execution Vector)', 
+            shape: 'box', 
+            margin: 12,
+            color: { background: '#fef3c7', border: '#d97706', highlight: { background: '#d97706', border: '#fff' } }, 
+            font: { color: '#0f172a', face: 'Inter', size: 13, multi: true, bold: true },
+            borderWidth: 2,
+            borderRadius: 8
+        },
+        { 
+            id: 4, 
+            label: 'T1078: Valid Accounts\n(Privilege Access)', 
+            shape: 'box', 
+            margin: 12,
+            color: { background: '#fef3c7', border: '#d97706', highlight: { background: '#d97706', border: '#fff' } }, 
+            font: { color: '#0f172a', face: 'Inter', size: 13, multi: true, bold: true },
+            borderWidth: 2,
+            borderRadius: 8
+        },
+        { 
+            id: 5, 
+            label: 'Power Grid Operations\n(Downstream Target)', 
+            shape: 'box', 
+            margin: 12,
+            color: { background: '#e0f2fe', border: '#0284c7', highlight: { background: '#0284c7', border: '#fff' } }, 
+            font: { color: '#0f172a', face: 'Inter', size: 13, multi: true, bold: true },
+            borderWidth: 2,
+            borderRadius: 8
+        },
+        { 
+            id: 6, 
+            label: 'T1498: Denial of Service\n(Impact Phase)', 
+            shape: 'box', 
+            margin: 12,
+            color: { background: '#fee2e2', border: '#ef4444', highlight: { background: '#ef4444', border: '#fff' } }, 
+            font: { color: '#0f172a', face: 'Inter', size: 13, multi: true, bold: true },
+            borderWidth: 2,
+            borderRadius: 8
+        }
+    ]);
+
+    const edges = new vis.DataSet([
+        { from: 1, to: 2, label: 'EXPLOITS', color: { color: '#ef4444', opacity: 0.8 }, arrows: 'to', font: { color: '#475569', size: 11, align: 'middle' }, width: 2 },
+        { from: 2, to: 3, label: 'EXECUTES', color: { color: '#d97706', opacity: 0.8 }, arrows: 'to', font: { color: '#475569', size: 11, align: 'middle' }, width: 2 },
+        { from: 3, to: 4, label: 'LEVERAGES', color: { color: '#d97706', opacity: 0.8 }, arrows: 'to', font: { color: '#475569', size: 11, align: 'middle' }, width: 2 },
+        { from: 4, to: 5, label: 'COMPROMISES', color: { color: '#0284c7', opacity: 0.8 }, arrows: 'to', font: { color: '#475569', size: 11, align: 'middle' }, width: 2 },
+        { from: 2, to: 6, label: 'CAUSES', color: { color: '#ef4444', opacity: 0.8 }, arrows: 'to', font: { color: '#475569', size: 11, align: 'middle' }, width: 2 }
+    ]);
+
+    const data = { nodes: nodes, edges: edges };
+
+    const options = {
+        nodes: {
+            shadow: { enabled: true, color: 'rgba(15,23,42,0.1)', size: 8, x: 2, y: 2 }
+        },
+        edges: {
+            smooth: { type: 'cubicBezier', roundness: 0.4 },
+            shadow: { enabled: false }
+        },
+        physics: {
+            enabled: true,
+            barnesHut: {
+                gravitationalConstant: -4500,
+                centralGravity: 0.4,
+                springLength: 160,
+                springConstant: 0.04
+            }
+        },
+        interaction: {
+            hover: true,
+            zoomView: true,
+            dragNodes: true
+        }
+    };
+
+    networkInstance = new vis.Network(container, data, options);
+});
+
+function resetGraphView() {
+    if (networkInstance) {
+        networkInstance.fit({ animation: { duration: 800, easingFunction: 'easeInOutQuad' } });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', async function() {
+    const container = document.getElementById('network-container');
+    if (!container) return;
+    try {
+        const response = await fetch('/api/graph-data');
+        const mapped = await response.json();
+        if (!response.ok || !mapped.nodes) return;
+        container.innerHTML = '';
+        const nodes = new vis.DataSet(mapped.nodes.map(node => ({
+            ...node,
+            shape: 'box', margin: 12, borderWidth: 2,
+            color: node.group === 'sector' ? { background: '#ccfbf1', border: '#0f766e' } : node.group === 'cve' ? { background: '#fee2e2', border: '#dc2626' } : { background: '#fef3c7', border: '#d97706' },
+            font: { color: '#0f172a', face: 'Space Grotesk', size: 13, multi: true, bold: true }
+        })));
+        const edges = new vis.DataSet(mapped.edges.map(edge => ({ ...edge, arrows: 'to', color: { color: '#0f766e', opacity: .75 }, font: { color: '#64748b', size: 10, align: 'middle' } })));
+        networkInstance = new vis.Network(container, { nodes, edges }, { physics: { barnesHut: { gravitationalConstant: -4500, springLength: 150 } }, interaction: { hover: true, dragNodes: true, zoomView: true } });
+    } catch (error) { console.error('Mapped graph unavailable', error); }
+});
+</script>
+{% endblock %}

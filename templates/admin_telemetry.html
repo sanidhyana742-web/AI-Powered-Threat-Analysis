@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}System Telemetry | NCIRIP Platform{% endblock %}
+{% block extra_head %}
+<style>
+.telemetry-hero { border-left: 3px solid #fb7185; background: linear-gradient(110deg, rgba(251,113,133,.1), rgba(94,234,212,.04)); }
+.telemetry-kicker { color:#fb7185; font:10px 'IBM Plex Mono',monospace; letter-spacing:.12em; text-transform:uppercase; }
+.telemetry-stat { border:1px solid rgba(94,234,212,.15); border-radius:6px; background:rgba(94,234,212,.04); padding:16px; min-height:112px; }
+.telemetry-stat small { color:var(--text-muted); display:block; font:9px 'IBM Plex Mono',monospace; letter-spacing:.08em; text-transform:uppercase; }
+.telemetry-stat strong { color:var(--accent-green); display:block; font-size:26px; margin-top:8px; }
+.health-row { border-bottom:1px solid rgba(134,161,158,.16); padding:13px 0; }
+.health-row:last-child { border-bottom:0; }
+.health-dot { width:8px; height:8px; border-radius:50%; display:inline-block; background:#5eead4; box-shadow:0 0 9px #5eead4; }
+.health-dot.warn { background:#fbbf24; box-shadow:0 0 9px #fbbf24; }
+.health-dot.offline { background:#fb7185; box-shadow:0 0 9px #fb7185; }
+.telemetry-bar { height:10px; background:#12262b; border-radius:2px; overflow:hidden; }
+.telemetry-bar span { display:block; height:100%; transition:width .4s ease; }
+.timeline-item { border-left:2px solid rgba(94,234,212,.25); padding:0 0 16px 14px; margin-left:4px; }
+.timeline-item:last-child { padding-bottom:0; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="telemetry-hero glass-card p-4 mb-4"><div class="d-flex flex-wrap justify-content-between align-items-start gap-3"><div><div class="telemetry-kicker mb-2"><i class="fa-solid fa-satellite-dish me-2"></i>Administrator observability / privileged view</div><h2 class="gradient-text fw-bold m-0">Real-Time System Telemetry</h2><p class="text-muted mb-0 mt-2">Monitor application health, intelligence services, and threat-data flow from one control surface.</p></div><div class="d-flex gap-2 align-items-center"><span id="liveBadge" class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2"><i class="fa-solid fa-circle me-1" style="font-size:7px;"></i>LIVE</span><button id="refreshTelemetry" class="btn btn-outline-info btn-sm"><i class="fa-solid fa-rotate me-2"></i>Refresh now</button></div></div></div>
+    <div class="row g-3 mb-4"><div class="col-6 col-xl-3"><div class="telemetry-stat"><small>Service uptime</small><strong id="uptime">--</strong><span class="text-muted small">Since last application start</span></div></div><div class="col-6 col-xl-3"><div class="telemetry-stat"><small>Active signals</small><strong id="activeSignals">--</strong><span class="text-muted small">Current dataset indicators</span></div></div><div class="col-6 col-xl-3"><div class="telemetry-stat"><small>Critical findings</small><strong id="criticalFindings">--</strong><span class="text-muted small">Severity classification</span></div></div><div class="col-6 col-xl-3"><div class="telemetry-stat"><small>Free disk space</small><strong id="diskFree">--</strong><span class="text-muted small">Application host volume</span></div></div></div>
+    <div class="row g-4"><div class="col-xl-5"><div class="glass-card p-4 h-100"><div class="d-flex justify-content-between align-items-center mb-2"><div><h5 class="text-info mb-1"><i class="fa-solid fa-server me-2"></i>Component health</h5><p id="lastChecked" class="text-muted small mb-0">Waiting for first check</p></div><span id="healthOverall" class="badge bg-secondary">CHECKING</span></div><div id="componentList"></div></div></div><div class="col-xl-4"><div class="glass-card p-4 h-100"><h5 class="text-warning mb-1"><i class="fa-solid fa-chart-column me-2"></i>Threat distribution</h5><p class="text-muted small mb-4">Records by source severity</p><div id="severityBars"></div><div class="border-top border-secondary border-opacity-25 mt-4 pt-3 d-flex justify-content-between"><span class="text-muted small">Telemetry records</span><strong id="totalRecords" class="text-light">--</strong></div></div></div><div class="col-xl-3"><div class="glass-card p-4 h-100"><h5 class="text-success mb-3"><i class="fa-solid fa-clock-rotate-left me-2"></i>Activity stream</h5><div id="activityStream"><p class="text-muted small">No recent administrative activity.</p></div></div></div></div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const telemetryLabels = { critical:'Critical', high:'High', medium:'Medium', low:'Low' };
+function formatUptime(seconds) { const days=Math.floor(seconds/86400), hours=Math.floor(seconds%86400/3600), minutes=Math.floor(seconds%3600/60); return days ? `${days}d ${hours}h` : `${hours}h ${minutes}m`; }
+function renderTelemetry(data) {
+    const health=data.health; document.getElementById('uptime').textContent=formatUptime(health.uptime_seconds); document.getElementById('activeSignals').textContent=health.active_signals.toLocaleString(); document.getElementById('criticalFindings').textContent=health.critical_findings.toLocaleString(); document.getElementById('diskFree').textContent=`${health.disk_free_gb} GB`; document.getElementById('totalRecords').textContent=health.records.toLocaleString(); document.getElementById('lastChecked').textContent=`Last checked ${health.checked_at} · ${health.platform}`;
+    const online=data.components.every(item => item.status === 'online' || item.status === 'configured'); const overall=document.getElementById('healthOverall'); overall.textContent=online?'ALL SYSTEMS NOMINAL':'REVIEW REQUIRED'; overall.className=`badge ${online?'bg-success':'bg-warning text-dark'}`;
+    document.getElementById('componentList').innerHTML=data.components.map(item=>`<div class="health-row d-flex justify-content-between align-items-center"><div><span class="health-dot ${item.status === 'online' || item.status === 'configured' ? '' : 'warn'} me-2"></span><strong class="text-light">${item.name}</strong><div class="text-muted small ms-4">${item.detail}</div></div><span class="small text-uppercase ${item.status === 'online' || item.status === 'configured' ? 'text-success' : 'text-warning'}">${item.status}</span></div>`).join('');
+    const max=Math.max(1,...Object.values(data.severity)); document.getElementById('severityBars').innerHTML=Object.entries(data.severity).map(([key,value])=>`<div class="mb-3"><div class="d-flex justify-content-between small mb-1"><span class="text-light">${telemetryLabels[key]}</span><span class="text-muted">${value.toLocaleString()}</span></div><div class="telemetry-bar"><span style="width:${value/max*100}%;background:${key==='critical'?'#fb7185':key==='high'?'#fbbf24':key==='medium'?'#2dd4bf':'#64748b'}"></span></div></div>`).join('');
+    document.getElementById('activityStream').innerHTML=data.activity.length ? data.activity.map(item=>`<div class="timeline-item"><div class="small text-light">${item.action}</div><div class="text-muted" style="font-size:10px">${item.actor} · ${item.timestamp}</div></div>`).join('') : '<p class="text-muted small">No recent administrative activity.</p>';
+}
+async function refreshTelemetry() { const button=document.getElementById('refreshTelemetry'), badge=document.getElementById('liveBadge'); button.disabled=true; badge.innerHTML='<i class="fa-solid fa-circle-notch fa-spin me-1"></i>SYNCING'; try { const response=await fetch('{{ url_for('admin_telemetry_api') }}'); if(!response.ok) throw new Error('Telemetry unavailable'); renderTelemetry(await response.json()); badge.innerHTML='<i class="fa-solid fa-circle me-1" style="font-size:7px;"></i>LIVE'; } catch(error) { badge.textContent='OFFLINE'; badge.className='badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-3 py-2'; } finally { button.disabled=false; } }
+document.getElementById('refreshTelemetry').addEventListener('click', refreshTelemetry); refreshTelemetry(); setInterval(refreshTelemetry, 30000);
+</script>
+{% endblock %}

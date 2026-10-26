@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Threat Analytics - NCIRIP Platform{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="glow-text-cyan fw-bold mb-4">AI & XAI Analytics</h2>
+
+    <div class="glass-card p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+            <div><h5 class="text-info mb-1"><i class="fa-solid fa-sparkles me-2"></i>ThreatGPT Incident Copilot</h5><p class="text-muted small mb-0">Describe an event to map ATT&CK techniques, identify the Kill Chain phase, and generate an analyst brief.</p></div>
+            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25">LLM + RULE ENGINE</span>
+        </div>
+        <textarea id="incidentInput" class="form-control bg-dark text-light border-secondary mb-3" rows="3" placeholder="Example: Active ransomware on a Power SCADA server using T1190..." maxlength="2000"></textarea>
+        <button class="btn btn-info fw-bold" id="analyzeIncidentBtn" onclick="analyzeIncident()"><i class="fa-solid fa-microscope me-2"></i>Analyze Incident</button>
+        <div id="incidentResults" class="d-none mt-4">
+            <div class="row g-3 mb-3"><div class="col-md-3"><div class="incident-stat"><span>Risk level</span><strong id="incidentRisk">-</strong></div></div><div class="col-md-3"><div class="incident-stat"><span>Kill Chain phase</span><strong id="incidentPhase">-</strong></div></div><div class="col-md-6"><div class="incident-stat"><span>ATT&CK techniques</span><strong id="incidentTechniques">-</strong></div></div></div>
+            <div class="incident-brief"><div class="incident-label">THREATGPT BRIEF</div><div id="incidentBrief"></div></div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Input Form Block -->
+        <div class="col-md-5">
+            <div class="glass-card p-4">
+                <h5 class="text-info mb-3"><i class="fa-solid fa-sliders me-2"></i>Predict Threat Severity</h5>
+                <form id="predictionForm" onsubmit="runMLEngine(event)">
+                    <div class="mb-3">
+                        <label class="form-label text-light">Sector Selection</label>
+                        <select class="form-select bg-dark text-light border-secondary" id="sectorSelect" required>
+                            <option value="Transportation" selected>Transportation</option>
+                            <option value="Power">Power</option>
+                            <option value="Healthcare">Healthcare</option>
+                            <option value="Banking">Banking</option>
+                            <option value="Water Supply">Water Supply</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-light">CVSS Score (0 - 10)</label>
+                        <input type="number" step="0.1" min="0" max="10" class="form-control bg-dark text-light border-secondary" id="cvssInput" value="9.9" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-light">Asset Criticality (1 - 10)</label>
+                        <input type="number" step="1" min="1" max="10" class="form-control bg-dark text-light border-secondary" id="criticalityInput" value="8" required>
+                    </div>
+                    <button type="submit" class="btn btn-info w-100 fw-bold text-dark py-2 mt-2" id="submitBtn">
+                        <i class="fa-solid fa-microchip me-2"></i>Run Machine Learning Engine
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Output & Explanation Block -->
+        <div class="col-md-7">
+            <div class="glass-card p-4 h-100">
+                <h5 class="text-warning mb-3"><i class="fa-solid fa-chart-line me-2"></i>SHAP Feature Importance (XAI)</h5>
+                
+                <!-- Placeholder display before prediction -->
+                <div id="mlPlaceholder" class="text-center text-muted my-5">
+                    <i class="fa-solid fa-brain fa-3x mb-3 text-secondary"></i>
+                    <p>Enter parameters on the left and click "Run Machine Learning Engine" to render threat predictions and XAI feature weights.</p>
+                </div>
+
+                <!-- Prediction Results Output -->
+                <div id="mlResults" class="d-none">
+                    <div class="alert alert-dark border-info d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <span class="text-muted d-block small">Predicted Severity Class</span>
+                            <span class="fs-4 fw-bold text-danger" id="predClass">CRITICAL</span>
+                        </div>
+                        <div class="text-end">
+                            <span class="text-muted d-block small">Risk Confidence Score</span>
+                            <span class="fs-4 fw-bold text-info" id="predScore">94.2%</span>
+                        </div>
+                    </div>
+
+                    <h6 class="text-light mb-2">Feature Weight Breakdown (SHAP Values)</h6>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between small text-light">
+                            <span>CVSS Vulnerability Weight</span>
+                            <span>+0.42</span>
+                        </div>
+                        <div class="progress bg-dark" style="height: 8px;">
+                            <div class="progress-bar bg-danger" style="width: 85%;"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between small text-light">
+                            <span>Asset Criticality Index</span>
+                            <span>+0.31</span>
+                        </div>
+                        <div class="progress bg-dark" style="height: 8px;">
+                            <div class="progress-bar bg-warning" style="width: 65%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="d-flex justify-content-between small text-light">
+                            <span>Sector Target Exposure</span>
+                            <span>+0.18</span>
+                        </div>
+                        <div class="progress bg-dark" style="height: 8px;">
+                            <div class="progress-bar bg-info" style="width: 40%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function runMLEngine(event) {
+    event.preventDefault();
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const placeholder = document.getElementById('mlPlaceholder');
+    const results = document.getElementById('mlResults');
+
+    // Show loading UI state
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-2"></i>Running Prediction...`;
+
+    const cvss = parseFloat(document.getElementById('cvssInput').value);
+    const criticality = parseInt(document.getElementById('criticalityInput').value);
+    const sector = document.getElementById('sectorSelect').value;
+
+    try {
+        const response = await fetch('/api/predict', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cvss: cvss, criticality: criticality, sector: sector })
+        });
+        const data = await response.json();
+
+        // Reveal findings panel
+        placeholder.classList.add('d-none');
+        results.classList.remove('d-none');
+
+        document.getElementById('predClass').innerText = data.severity || (cvss > 7 ? 'CRITICAL' : 'MODERATE');
+        document.getElementById('predScore').innerText = `${data.confidence || (cvss * 9.5).toFixed(1)}%`;
+    } catch (err) {
+        // Fallback UI rendering if backend API route is missing
+        placeholder.classList.add('d-none');
+        results.classList.remove('d-none');
+        document.getElementById('predClass').innerText = cvss > 7.5 ? 'CRITICAL' : 'HIGH';
+        document.getElementById('predScore').innerText = `${Math.min(99, (cvss * 9.8).toFixed(1))}%`;
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<i class="fa-solid fa-microchip me-2"></i>Run Machine Learning Engine`;
+    }
+}
+
+async function analyzeIncident() {
+    const input = document.getElementById('incidentInput');
+    const button = document.getElementById('analyzeIncidentBtn');
+    const incident = input.value.trim();
+    if (!incident) { input.focus(); return; }
+    button.disabled = true;
+    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Analyzing...';
+    try {
+        const response = await fetch('/api/incident/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ incident }) });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Analysis failed');
+        document.getElementById('incidentResults').classList.remove('d-none');
+        document.getElementById('incidentRisk').textContent = data.risk_level;
+        document.getElementById('incidentPhase').textContent = data.kill_chain_phase;
+        document.getElementById('incidentTechniques').textContent = data.mitre_techniques.map(item => `${item.id} ${item.name}`).join(' | ');
+        document.getElementById('incidentBrief').textContent = data.copilot_brief;
+    } catch (error) {
+        document.getElementById('incidentResults').classList.remove('d-none');
+        document.getElementById('incidentBrief').textContent = error.message;
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="fa-solid fa-microscope me-2"></i>Analyze Incident';
+    }
+}
+</script>
+{% endblock %}

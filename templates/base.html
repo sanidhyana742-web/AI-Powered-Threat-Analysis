@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}NCIRIP | Cyber Intelligence Gateway{% endblock %}</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+    <div class="d-flex" id="wrapper">
+        {% if current_user.is_authenticated %}
+        <aside class="d-flex flex-column" id="sidebar-wrapper">
+            <div class="brand-lockup">
+                <div class="brand-mark"><i class="fa-solid fa-shield-halved"></i></div>
+                <div>
+                    <span class="brand-name">NCIRIP</span>
+                    <span class="brand-subtitle">National Cyber Intelligence</span>
+                </div>
+            </div>
+
+            <div class="sidebar-nav flex-grow-1">
+                <div class="nav-label">Operations console</div>
+                {% if current_user.role == 'Admin' %}
+                <a href="{{ url_for('admin_dashboard') }}" class="sidebar-link nav-link-custom">
+                    <i class="fa-solid fa-user-shield text-warning"></i> Admin Console
+                </a>
+                <a href="{{ url_for('admin_telemetry') }}" class="sidebar-link nav-link-custom">
+                    <i class="fa-solid fa-heart-pulse text-danger"></i> System Telemetry
+                </a>
+                {% endif %}
+                <a href="{{ url_for('dashboard') }}" class="sidebar-link nav-link-custom">
+                    <i class="fa-solid fa-chart-pie text-success"></i> Executive Dashboard
+                </a>
+                <a href="{{ url_for('threat_analytics') }}" class="sidebar-link nav-link-custom">
+                    <i class="fa-solid fa-brain text-info"></i> AI & XAI Analytics
+                </a>
+                <a href="{{ url_for('gan_generator') }}" class="sidebar-link nav-link-custom">
+                    <i class="fa-solid fa-dna text-warning"></i> GAN Attack Generator
+                </a>
+                <a href="{{ url_for('attack_graph') }}" class="sidebar-link nav-link-custom">
+                    <i class="fa-solid fa-diagram-project text-warning"></i> Attack Path Graph
+                </a>
+                <a href="{{ url_for('sector_risk') }}" class="sidebar-link nav-link-custom">
+                    <i class="fa-solid fa-network-wired text-success"></i> Sector Risk Matrix
+                </a>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="system-status"><span class="status-dot"></span><span>All systems operational</span></div>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm w-100 fw-semibold py-2">
+                    <i class="fa-solid fa-right-from-bracket me-2"></i> Sign Out
+                </a>
+            </div>
+        </aside>
+        {% endif %}
+
+        <main id="page-content-wrapper" class="flex-grow-1">
+            {% if current_user.is_authenticated %}<div class="topbar"><span class="eyebrow">SECURE OPERATIONS / <strong>LIVE</strong></span><span class="topbar-user"><i class="fa-solid fa-circle-user"></i> {{ current_user.username }}</span></div>{% endif %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Floating Cyber Assistant Launcher -->
+    <button id="chatToggleBtn" class="chat-launcher-btn" onclick="toggleChatbot()" title="Sentinel AI">
+        <i class="fa-solid fa-robot"></i>
+    </button>
+
+    <div id="chatbotContainer" class="chatbot-window d-none">
+        <div class="p-3 border-bottom border-success border-opacity-20 d-flex justify-content-between align-items-center bg-dark" style="background: #080c14 !important;">
+            <div class="d-flex align-items-center gap-2">
+                <div class="bg-success rounded-circle p-1 animate-pulse" style="width: 8px; height: 8px; box-shadow: 0 0 8px #22c55e;"></div>
+                <span class="fw-bold text-white small">Sentinel AI</span>
+                <span class="badge bg-success bg-opacity-10 text-success small border border-success border-opacity-25" style="font-size: 10px;">ONLINE</span>
+            </div>
+            <button type="button" class="btn-close btn-close-white btn-sm" onclick="toggleChatbot()"></button>
+        </div>
+        <div class="chatbot-body p-3 flex-grow-1 overflow-auto" id="chatContainer" style="font-size: 13px;">
+            <div class="chat-msg-bot">
+                Neural link initialized. Query system anomalies, exploit vectors, or MITRE threat mappings.
+            </div>
+        </div>
+        <div class="p-2 border-top border-success border-opacity-20 bg-dark d-flex gap-2" style="background: #080c14 !important;">
+            <input type="text" id="userInput" class="form-control form-control-sm bg-dark text-white border-success border-opacity-25" placeholder="Query Sentinel AI...">
+            <button class="btn btn-sm btn-success text-dark fw-bold px-3" style="background: #22c55e;" onclick="sendChatMessage()">
+                <i class="fa-solid fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

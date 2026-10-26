@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}GAN Attack Generator - NCIRIP Platform{% endblock %}
+
+{% block extra_head %}
+<style>
+    .gan-hero { border-left: 3px solid #fbbf24; background: linear-gradient(110deg, rgba(251, 191, 36, .1), rgba(94, 234, 212, .04)); }
+    .gan-kicker { color: #fbbf24; font: 10px 'IBM Plex Mono', monospace; letter-spacing: .12em; text-transform: uppercase; }
+    .gan-control { min-height: 44px; background: #09161b !important; color: var(--text-main) !important; border-color: rgba(94, 234, 212, .2) !important; }
+    .gan-control:focus { border-color: var(--accent-green) !important; box-shadow: 0 0 0 .2rem rgba(94, 234, 212, .12); }
+    .gan-stat { border: 1px solid rgba(94, 234, 212, .14); border-radius: 6px; padding: 14px; background: rgba(94, 234, 212, .04); }
+    .gan-stat-label { display: block; color: var(--text-muted); font: 9px 'IBM Plex Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
+    .gan-stat-value { display: block; color: var(--accent-green); font-size: 24px; font-weight: 700; margin-top: 5px; }
+    .gan-table-wrap { overflow-x: auto; }
+    .gan-table { min-width: 820px; }
+    .gan-table th { color: #86a19e; font: 10px 'IBM Plex Mono', monospace; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+    .gan-table td { color: #dce9e7; font-size: 12px; vertical-align: middle; white-space: nowrap; }
+    .gan-empty { min-height: 260px; display: grid; place-items: center; border: 1px dashed rgba(94, 234, 212, .2); color: var(--text-muted); }
+    .gan-disclaimer { color: #fcd34d; font-size: 11px; border: 1px solid rgba(251, 191, 36, .2); background: rgba(251, 191, 36, .05); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="gan-hero glass-card p-4 mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+            <div>
+                <div class="gan-kicker mb-2"><i class="fa-solid fa-dna me-2"></i>Generative security lab / isolated telemetry</div>
+                <h2 class="gradient-text fw-bold m-0">GAN Attack Generator</h2>
+                <p class="text-muted mb-0 mt-2">Create synthetic attack telemetry for detection testing, tabletop exercises, and model evaluation.</p>
+            </div>
+            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-3 py-2">SYNTHETIC ONLY</span>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-xl-4">
+            <div class="glass-card p-4 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <h5 class="text-warning mb-0"><i class="fa-solid fa-sliders me-2"></i>Generation controls</h5>
+                    <span class="text-muted small">GAN v0.1</span>
+                </div>
+                <form id="ganForm">
+                    <div class="mb-3">
+                        <label class="form-label text-light small">Target sector</label>
+                        <select id="ganSector" class="form-select gan-control">
+                            <option>All sectors</option>
+                            {% for sector in sectors %}<option value="{{ sector }}">{{ sector }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-light small">Synthetic samples <span class="text-muted">(1-50)</span></label>
+                        <input id="ganCount" class="form-control gan-control" type="number" min="1" max="50" value="8">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-light small">Threat intensity</label>
+                        <select id="ganIntensity" class="form-select gan-control">
+                            <option>Low</option>
+                            <option selected>Balanced</option>
+                            <option>High</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label text-light small">Reproducibility seed <span class="text-muted">(optional)</span></label>
+                        <input id="ganSeed" class="form-control gan-control" type="number" placeholder="Random each run">
+                    </div>
+                    <button id="ganGenerateBtn" class="btn btn-warning w-100 fw-bold text-dark py-2" type="submit">
+                        <i class="fa-solid fa-wand-magic-sparkles me-2"></i>Generate telemetry
+                    </button>
+                </form>
+                <div class="gan-disclaimer rounded-1 p-3 mt-4"><i class="fa-solid fa-shield-halved me-2"></i>Outputs are abstract records only. No exploit code, credentials, or network actions are generated.</div>
+            </div>
+        </div>
+
+        <div class="col-xl-8">
+            <div class="glass-card p-4 h-100">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                    <div><h5 class="text-info mb-1"><i class="fa-solid fa-table-list me-2"></i>Generated attack telemetry</h5><p id="ganStatus" class="text-muted small mb-0">Awaiting generation run</p></div>
+                    <button id="ganExportBtn" class="btn btn-sm btn-outline-info d-none" type="button"><i class="fa-solid fa-download me-1"></i>Export JSON</button>
+                </div>
+                <div id="ganStats" class="row g-2 mb-3 d-none">
+                    <div class="col-6 col-md-3"><div class="gan-stat"><span class="gan-stat-label">Samples</span><strong id="ganSampleStat" class="gan-stat-value">0</strong></div></div>
+                    <div class="col-6 col-md-3"><div class="gan-stat"><span class="gan-stat-label">Average risk</span><strong id="ganRiskStat" class="gan-stat-value">0</strong></div></div>
+                    <div class="col-6 col-md-3"><div class="gan-stat"><span class="gan-stat-label">Critical</span><strong id="ganCriticalStat" class="gan-stat-value">0</strong></div></div>
+                    <div class="col-6 col-md-3"><div class="gan-stat"><span class="gan-stat-label">Active signal</span><strong id="ganActiveStat" class="gan-stat-value">0</strong></div></div>
+                </div>
+                <div id="ganEmpty" class="gan-empty rounded-1"><div class="text-center"><i class="fa-solid fa-cubes fa-2x text-secondary mb-3"></i><p class="mb-0">Configure a run to populate the telemetry stream.</p></div></div>
+                <div id="ganTableWrap" class="gan-table-wrap d-none">
+                    <table class="table table-dark table-hover gan-table mb-0">
+                        <thead><tr><th>Record</th><th>Sector / asset</th><th>Attack type</th><th>ATT&CK</th><th>CVSS</th><th>Risk</th><th>State</th></tr></thead>
+                        <tbody id="ganTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let generatedGanData = null;
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>'"]/g, character => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[character]));
+}
+
+function renderGanResults(data) {
+    generatedGanData = data;
+    document.getElementById('ganEmpty').classList.add('d-none');
+    document.getElementById('ganTableWrap').classList.remove('d-none');
+    document.getElementById('ganStats').classList.remove('d-none');
+    document.getElementById('ganExportBtn').classList.remove('d-none');
+    document.getElementById('ganStatus').textContent = `${data.summary.count} synthetic records generated from the seed distribution`;
+    document.getElementById('ganSampleStat').textContent = data.summary.count;
+    document.getElementById('ganRiskStat').textContent = data.summary.avg_risk;
+    document.getElementById('ganCriticalStat').textContent = data.summary.critical;
+    document.getElementById('ganActiveStat').textContent = data.summary.active;
+    document.getElementById('ganTableBody').innerHTML = data.records.map(record => `
+        <tr><td class="text-info fw-semibold">${escapeHtml(record.record_id)}</td><td><strong>${escapeHtml(record.sector)}</strong><br><span class="text-muted">${escapeHtml(record.affected_asset)}</span></td><td>${escapeHtml(record.attack_type)}</td><td class="text-warning">${escapeHtml(record.mitre_technique)}</td><td>${escapeHtml(record.cvss_score)}</td><td><span class="badge ${record.risk_level === 'CRITICAL' ? 'bg-danger' : record.risk_level === 'HIGH' ? 'bg-warning text-dark' : 'bg-info text-dark'}">${escapeHtml(record.risk_level)} / ${escapeHtml(record.risk_score)}</span></td><td>${record.threat_active ? '<span class="text-danger"><i class="fa-solid fa-circle me-1"></i>Active</span>' : '<span class="text-muted"><i class="fa-regular fa-circle me-1"></i>Observed</span>'}</td></tr>`).join('');
+}
+
+document.getElementById('ganForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = document.getElementById('ganGenerateBtn');
+    button.disabled = true;
+    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Generating...';
+    const seed = document.getElementById('ganSeed').value;
+    try {
+        const response = await fetch('/api/gan/generate', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ count: document.getElementById('ganCount').value, sector: document.getElementById('ganSector').value, intensity: document.getElementById('ganIntensity').value, seed: seed ? Number(seed) : null }) });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Generation failed');
+        renderGanResults(data);
+    } catch (error) {
+        document.getElementById('ganStatus').textContent = error.message;
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles me-2"></i>Generate telemetry';
+    }
+});
+
+document.getElementById('ganExportBtn').addEventListener('click', () => {
+    if (!generatedGanData) return;
+    const blob = new Blob([JSON.stringify(generatedGanData.records, null, 2)], {type: 'application/json'});
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'ncirip-synthetic-attack-telemetry.json';
+    link.click();
+    URL.revokeObjectURL(link.href);
+});
+</script>
+{% endblock %}
